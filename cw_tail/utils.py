@@ -53,14 +53,33 @@ def color_funcs():
 def load_config(config_name: str = None) -> dict:
     """
     Load configuration from a YAML file.
+    Searches for config files in the following order:
+    1. ./config.yml (project-specific)
+    2. ./.cw-tail.yml (project-specific, hidden)
+    3. ~/.config/cw-tail/config.yml (user-global)
+    
     If config_name is provided, load that specific configuration,
     otherwise return the default configuration.
     """
-
-    config_file = Path(__file__).parent / "config.yml"
+    # Define possible config file locations in order of preference
+    config_locations = [
+        Path.cwd() / "config.yml",                      # Project-specific
+        Path.cwd() / ".cw-tail.yml",                   # Project-specific (hidden)
+        Path.home() / ".config" / "cw-tail" / "config.yml"  # User-global
+    ]
     
-    if not config_file.exists():
-        print("HUH?")
+    config_file = None
+    
+    # Find the first existing config file
+    for location in config_locations:
+        if location.exists():
+            config_file = location
+            break
+    
+    # If no config file exists, create a default one in the user config directory
+    if not config_file:
+        config_file = Path.home() / ".config" / "cw-tail" / "config.yml"
+        
         # Create default config if it doesn't exist
         config_file.parent.mkdir(parents=True, exist_ok=True)
         default_config = {
@@ -81,11 +100,12 @@ def load_config(config_name: str = None) -> dict:
             }
         }
         config_file.write_text(yaml.dump(default_config, default_flow_style=False))
+        print(f"Created default config at: {config_file}")
         
     try:
         configs = yaml.safe_load(config_file.read_text())
     except Exception as e:
-        print(f"Error loading config file: {e}", file=sys.stderr)
+        print(f"Error loading config file {config_file}: {e}", file=sys.stderr)
         return {}
 
     if not config_name:
@@ -104,8 +124,8 @@ def parse_command_line_arguments(args: argparse.Namespace) -> dict:
     Parse command line arguments into a dictionary.
     """
     CONFIG_LIST_KEYS = [
-        "filter_pattern",
-        "highlight_tokens",
+        "filter_tokens",
+        "highlight_tokens", 
         "exclude_tokens",
         "exclude_streams",
     ]
