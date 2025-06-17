@@ -11,3 +11,5 @@
 *.pywz
 __pycache__
 config.yml
+.cw-tail.yml
+.coverage

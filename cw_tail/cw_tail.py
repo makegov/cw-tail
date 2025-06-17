@@ -48,14 +48,27 @@ class CloudWatchTailer:
     """
     def __init__(self, **kwargs):
         self.delay = 5
+        
+        # Set default values for optional attributes
+        defaults = {
+            'region': 'us-east-1',
+            'exclude_streams': [],
+            'highlight_tokens': [],
+            'formatter': None,
+            'format_options': {}
+        }
+        
+        # Apply defaults first, then override with provided kwargs
+        for key, default_value in defaults.items():
+            setattr(self, key, default_value)
+        
         for key, value in kwargs.items():
             setattr(self, key, value)
-        
         
         self._parse_filter_and_exclude_tokens()
 
         try:
-            if self.formatter:
+            if hasattr(self, 'formatter') and self.formatter:
                 self.formatter = getattr(formatters, self.formatter)
         except AttributeError:
             print(f"Formatter {self.formatter} not found")
@@ -378,7 +391,7 @@ Examples:
     
     parser.add_argument(
         "--config",
-        help="Name of the configuration to use from ~/.config/cw-tail/config.yml"
+        help="Name of the configuration to use (searches ./config.yml, ./.cw-tail.yml, then ~/.config/cw-tail/config.yml)"
     )
     parser.add_argument(
         "--log-group",

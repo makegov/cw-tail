@@ -14,7 +14,7 @@
 
 - Python 3.12 or later
 - AWS credentials configured (via environment variables, AWS CLI configuration, or IAM roles)
-- [boto3](https://pypi.org/project/boto3/) (installed automatically with the package)
+- [uv](https://docs.astral.sh/uv/) for Python package management
 
 ## AWS CLI Setup
 
@@ -31,32 +31,92 @@ Alternatively, you can set these values as environment variables.
 
 ## Installation
 
-It's best to install `cw-tail` inside a virtual environment to avoid any system conflicts.
+### Prerequisites
 
-1. **Create & Activate a Virtual Environment:**
-
-   ```bash
-   python3 -m venv env
-   source env/bin/activate  # On Windows: env\Scripts\activate
-   ```
-
-2. **Install the Package:**
-
-   ```bash
-   pip install .
-   ```
-
-### Simple Installation
-
-The `install.sh` script will create a virtual environment and install the package:
+First, install [uv](https://docs.astral.sh/uv/) if you haven't already:
 
 ```bash
-./install.sh
+curl -LsSf https://astral.sh/uv/install.sh | sh
+```
+
+### Option 1: Install as a Global Tool (Recommended)
+
+Install `cw-tail` globally using uv tool:
+
+```bash
+uv tool install cw-tail
+```
+
+Or install from the source directory:
+
+```bash
+uv tool install .
+```
+
+After installation, you may need to add uv's tool directory to your PATH:
+
+```bash
+uv tool update-shell
+```
+
+### Option 2: Development Installation
+
+For development or if you want to modify the code:
+
+```bash
+# Clone the repository
+git clone <repository-url>
+cd cw-tail
+
+# Install dependencies and create virtual environment
+uv sync
+
+# Run the tool during development
+uv run cw-tail --help
+```
+
+### Development Installation
+
+For development or local usage:
+
+```bash
+# Sync dependencies and create virtual environment
+uv sync
+
+# Run the tool
+uv run cw-tail --help
+```
+
+### Global Installation
+
+To install as a globally available tool:
+
+```bash
+# Install as a uv tool (recommended)
+uv tool install .
+
+# Then use anywhere
+cw-tail --help
 ```
 
 ## Configuration
 
-Create a configuration file at `/cw-tail/config.yml`. There is an example configuration file in the repository in the correct location. The tool will create a default configuration if none exists. Here's an example configuration:
+### Configuration File Priority
+
+`cw-tail` looks for configuration files in the following order:
+
+1. **`./config.yml`** (project-specific) - **Recommended for teams/projects**
+2. **`./.cw-tail.yml`** (project-specific, hidden file) - Good for personal project configs
+3. **`~/.config/cw-tail/config.yml`** (user-global) - Fallback for global settings
+
+The first file found will be used. This allows you to:
+- **Share configs with your team** by committing `./config.yml` to your repository
+- **Keep personal configs private** by using `./.cw-tail.yml` (which is in `.gitignore`)
+- **Have global defaults** in your user config directory
+
+### Creating Configuration Files
+
+There is an example configuration file (`config.example.yml`) in the repository. The tool will create a default global configuration if none exists. Here's an example configuration:
 
 ```yaml
 default:
@@ -90,17 +150,22 @@ Any values provided via command‑line arguments will override these configurati
 
 ## Usage
 
-After installation, run the tool using the command‑line script `cw-tail`. To view the help text with all available options, run:
+### If Installed as Global Tool
 
 ```bash
-source env/bin/activate  # On Windows: env\Scripts\activate
 cw-tail --help
+```
+
+### If Using Development Installation
+
+```bash
+uv run cw-tail --help
 ```
 
 ### Examples
 
 ```bash
-# Use the prod configuration
+# Use the prod configuration from local config file
 cw-tail --config prod
 
 # Use the dev configuration but override the time window
@@ -110,23 +175,113 @@ cw-tail --config dev --since 30m
 cw-tail --log-group my-logs --colorize
 ```
 
+### Project-Specific Configuration Example
+
+For a typical project setup:
+
+1. **Create a project config file:**
+   ```bash
+   # Copy the example config to your project
+   cp config.example.yml config.yml
+   
+   # Edit it for your project's log groups and settings
+   # Then commit it so your team can use the same settings
+   ```
+
+2. **Use project-specific configs:**
+   ```bash
+   # These will use your project's config.yml automatically
+   cw-tail --config prod      # Uses prod config from ./config.yml
+   cw-tail --config dev       # Uses dev config from ./config.yml
+   cw-tail --config staging   # Uses staging config from ./config.yml
+   ```
+
+3. **Personal overrides (optional):**
+   ```bash
+   # Create a personal config that won't be committed
+   cp config.yml .cw-tail.yml
+   # Edit .cw-tail.yml with your personal preferences
+   # This will take precedence over config.yml
+   ```
+
+## Development
+
+### Setting Up Development Environment
+
+```bash
+# Install with development dependencies
+uv sync --extra dev
+
+# Run tests (if available)
+uv run pytest
+
+# Format code
+uv run black .
+
+# Lint code
+uv run ruff check .
+```
+
+### Making Changes
+
+After making changes to the code:
+
+```bash
+# The tool will automatically use your changes when run with:
+uv run cw-tail --help
+
+# To reinstall the global tool with your changes:
+uv tool install . --force
+```
+
+### Testing
+
+The project includes a comprehensive test suite with 89 tests covering:
+
+- **Utility Functions**: Configuration loading, parsing, time conversion
+- **CloudWatchTailer Class**: Core functionality, initialization, filtering, highlighting  
+- **Formatters**: JSON formatting and processing
+- **Main Function**: Command-line interface and integration tests
+- **Project-Specific Config**: Config file priority and merging
+
+**Quick Test Commands:**
+```bash
+# Run all tests
+uv run pytest
+
+# Run tests with coverage report
+uv run pytest --cov=cw_tail --cov-report=term-missing
+
+# Run tests in verbose mode
+uv run pytest -v
+
+# Run specific test file
+uv run pytest tests/test_utils.py -v
+
+# Run tests with custom options
+uv run pytest tests/ --maxfail=1 -x
+```
+
+The test suite achieves **74% code coverage** and all tests are passing.
+
 ### AWS CLI Setup Reminder
 
 - Install AWS CLI: Follow the [installation guide](https://docs.aws.amazon.com/cli/latest/userguide/getting-started-install.html) for your operating system.
-- Configure AWS Credentials: Run aws configure or manually edit your `~/.aws/credentials` file to ensure that your AWS credentials are correctly set up.
+- Configure AWS Credentials: Run `aws configure` or manually edit your `~/.aws/credentials` file to ensure that your AWS credentials are correctly set up.
 
-### Development & Packaging
-
-The project uses a pyproject.toml for packaging. To reinstall locally after making changes:
-
-```bash
-pip install -e .
-```
-
-### Contributing
+## Contributing
 
 Pull requests, bug reports, and suggestions are welcome. Please follow the standard GitHub flow for contributions.
 
-### License
+### Development Workflow
+
+1. Fork the repository
+2. Create a feature branch
+3. Set up development environment: `uv sync --extra dev`
+4. Make your changes
+5. Test your changes: `uv run cw-tail --help`
+6. Submit a pull request
+
+## License
 
 This project is licensed under the [Unlicense](LICENSE).
